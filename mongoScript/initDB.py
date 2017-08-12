@@ -12,7 +12,7 @@ geolocator = Nominatim()
 data = []
 cont=0
 db.downloads.remove()
-while cont<1000:
+while cont<100:
     try : 
         longit =  random.randint(0,150) if random.randint(0,1) == 0  else  - random.randint(0,150) 
         lat =   random.randint(0,70) if random.randint(0,1) == 0  else  - random.randint(0,70) 
