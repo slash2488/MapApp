@@ -17,10 +17,7 @@ client = MongoClient('mongodb://localhost:27017/')
 def test_connect():
     print('Connected')
 
-@socketApp.on('refreshData', namespace='/poll')
-def refresh():
-    print('refreshData')
-
+#Entry point for calculate difference between server and client data, the difference is sent back to client for refresh map data
 @socketApp.on('send_message', namespace='/poll')
 def handle_message(data):
     countDownloads = client.Empatica.downloads.count()
@@ -29,11 +26,14 @@ def handle_message(data):
     emit('refreshMap', resp, namespace='/poll', broadcast=True)
 
 #connectionMongo = MongoClient(host="localhost" , port=80, max_pool_size=100 , document_class=dict,tz_aware=False)
+
+#Rest resource used for retrieve all data downloads in mongoDB
 @app.route('/downloads',methods=['GET']) 
 def mapData():
     data =  client.Empatica.downloads.find();
     return dumps(data)
 
+#Rest resource used for retrieve the last data inserted, the criteria is the _id
 @app.route('/last_download',methods=['GET']) 
 def lastData():
     print(request.args.get('limit'))

@@ -1,7 +1,7 @@
 var angularAppModule = angular.module('AppEmpatica', ['uiGmapgoogle-maps', 'ngWebSocket', 'btford.socket-io']);
 
 angularAppModule.directive('customchart', function () {
-        /*Custom directive used for drawing Google Chart
+        /*  Custom directive used for drawing Google Chart
             Params : 
             @datadownloads: data retrieve by python API , contains data downloads, it's refreshed inside the directive by $watch
             @idchart: id of the div container
@@ -40,6 +40,7 @@ angularAppModule.directive('customchart', function () {
                             }
                         }
 
+                         //Get data and chart to draw an Area chart
                         function dataAreaChart() {
                             var area = [
                                 [
@@ -124,7 +125,7 @@ angularAppModule.directive('customchart', function () {
                                 .arrayToDataTable(area);
 
                             var options = {
-                                title: 'Company Performance',
+                                title: 'Downloads overview by Time',
                                 width: '1000',
                                 hAxis: {
                                     title: 'Hour',
@@ -144,6 +145,7 @@ angularAppModule.directive('customchart', function () {
 
                         };
 
+                        //Get data and chart to draw a region chart
                         function dataRegionsMap() {
                             var region = {
                                 'Country': 'Popularity'
@@ -182,6 +184,7 @@ angularAppModule.directive('customchart', function () {
                             .charts
                             .setOnLoadCallback(drawChart($scope.ctrl.type.t).draw);
 
+                         // Set a watch to redraw charts wnere downloads are update
                         $scope.$watch('ctrl.datadownloads', function (newValue, oldValue) {
                             drawChart($scope.ctrl.type.t).draw();
                         }, true);
@@ -193,6 +196,7 @@ angularAppModule.directive('customchart', function () {
     .factory('socketService', function (socketFactory, $interval) {
         /*
             Service used for manage the polling between client and server
+            Send a message into the server every 20 seconds with the number of downloads in the client
         */
         var socket = socketFactory({
             ioSocket: io.connect('http://localhost:5000/poll')
@@ -222,6 +226,7 @@ angularAppModule.directive('customchart', function () {
         '$http',
         '$q',
         function ($http, $q) {
+            //Generic method to send http request
             var apiCall = function (url, method, headers, params) {
                 var deferred = $q.defer();
                 $http({ method: method, url: url, headers: headers, params: params }).then(function (result) {
@@ -254,9 +259,6 @@ angularAppModule.directive('customchart', function () {
             .load('current', {
                 'packages': ['geochart', ['corechart']
                 ],
-                // Note: you will need to get a mapsApiKey for your project. See:
-                // https://developers.google.com/chart/interactive/docs/basic_load_libs#load-set
-                // t ings
                 'mapsApiKey': 'AIzaSyDt49WErKjs-l953nhJj-tExdhmF5yA64A'
             });
         uiGmapGoogleMapApiProvider.configure({ key: 'AIzaSyDt49WErKjs-l953nhJj-tExdhmF5yA64A', v: '3.20', libraries: 'weather,geometry,visualization' });
@@ -270,11 +272,12 @@ angularAppModule.directive('customchart', function () {
         function ($scope, uiGmapGoogleMapApi, $http, socketService, APIService) {
             $scope.markers = [];
             $scope.markerControl = {};
-            $scope.lastSync = null;
             $scope.Map = null;
             $scope.dataDownloads = {
                 data: []
             };
+
+            //Ued for manage the two tabs Map & Dashboards
             $scope.tab = {
                 'map': {
                     class: 'active'
@@ -308,8 +311,13 @@ angularAppModule.directive('customchart', function () {
             socketService
                 .getSocket()
                 .forward('refreshMap', $scope);
+            /*  
+                Setup an entry point for Messages from server
+                When client send the current status 
+            */
             $scope.$on('socket:refreshMap', function (ev, data) {
                 console.log(data.refresh);
+                 // If server data is less than client data I refresh all map for test purpose 
                 if (data.refresh < 0) {
                     APIService
                         .refreshAll()
@@ -329,7 +337,7 @@ angularAppModule.directive('customchart', function () {
                                         title: value.download_at,
                                         events: {
                                             click: function (marker, event, data) {
-                                                alert(moment(value.download_at).format());
+                                                //alert(moment(value.download_at).format());
                                             },
                                             mouseover: function () { }
                                         }
@@ -338,6 +346,7 @@ angularAppModule.directive('customchart', function () {
                             socketService.set_send_message_data($scope.markers.length);;
                         })
                 } else if (data.refresh > 0) {
+                    // If server data is much than client data I add only the last data downloads
                     APIService
                         .syncMarker(data.refresh)
                         .then(function (result) {
@@ -369,6 +378,10 @@ angularAppModule.directive('customchart', function () {
                 }
 
             });
+            /* 
+                When the map is ready I read all data from server and I add al markers on the map
+                Plus I set the intervall wich I poll the server every 20 second, and i set the length of data downloads
+            */
             uiGmapGoogleMapApi.then(function (maps) {
                 $scope.Map = maps;
                 socketService.set_send_message_data($scope.markers.length);
